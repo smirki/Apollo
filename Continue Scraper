@@ -1,0 +1,81 @@
+(function loopScraping() {
+    // Helper function to convert JSON to CSV
+    function convertToCSV(data) {
+        const csvRows = [];
+        const headers = Object.keys(data[0]);
+        csvRows.push(headers.join(','));
+
+        for (const row of data) {
+            const values = headers.map(header => `"${row[header] || ''}"`);
+            csvRows.push(values.join(','));
+        }
+        return csvRows.join('\n');
+    }
+
+    // Helper function to download CSV file
+    function downloadCSV(csv, filename) {
+        const csvFile = new Blob([csv], { type: 'text/csv' });
+        const downloadLink = document.createElement('a');
+        downloadLink.download = filename;
+        downloadLink.href = window.URL.createObjectURL(csvFile);
+        downloadLink.style.display = 'none';
+        document.body.appendChild(downloadLink);
+        downloadLink.click();
+    }
+
+    // Function to scrape data from the page
+    function scrapeData() {
+        const peopleList = document.querySelectorAll('tr[data-cy="SelectableTableRow"]');
+        const scrapedData = [];
+
+        peopleList.forEach(person => {
+            const nameElement = person.querySelector('div.zp_xVJ20 a');
+            const name = nameElement ? nameElement.innerText : '';
+            const id = nameElement ? nameElement.getAttribute('href').split('/people/')[1] : '';
+            const linkedinElement = person.querySelector('a[href*="linkedin.com"]');
+            const linkedin = linkedinElement ? linkedinElement.getAttribute('href') : '';
+            const titleElement = person.querySelector('span.zp_Y6y8d');
+            const title = titleElement ? titleElement.innerText : '';
+            const companyElement = person.querySelector('a[href*="#/organizations"]');
+            const company = companyElement ? companyElement.innerText : '';
+
+            scrapedData.push({
+                Name: name,
+                ID: id,
+                LinkedIn: linkedin,
+                Title: title,
+                Company: company
+            });
+        });
+
+        if (scrapedData.length > 0) {
+            const csvData = convertToCSV(scrapedData);
+            const filename = `scraped_people_data_${new Date().getTime()}.csv`;
+            downloadCSV(csvData, filename);
+        } else {
+            console.error("No data found to scrape.");
+        }
+    }
+
+    // Function to click the right arrow and continue the loop
+    function clickRightArrow() {
+        const rightArrowButton = document.querySelector('button[aria-label="right-arrow"]');
+        if (rightArrowButton) {
+            rightArrowButton.click();
+        } else {
+            console.error("Right arrow button not found");
+            return;
+        }
+    }
+
+    // Main loop to scrape, download CSV, click right arrow, and wait 4 seconds
+    function mainLoop() {
+        scrapeData();  // Scrape the data and download the CSV
+        setTimeout(() => {
+            clickRightArrow();  // Click the right arrow
+            setTimeout(mainLoop, 4000);  // Wait 4 seconds and continue the loop
+        }, 4000);
+    }
+
+    mainLoop();  // Start the loop
+})();
